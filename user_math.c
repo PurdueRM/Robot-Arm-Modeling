@@ -13,6 +13,7 @@ Mat *new_mat(int rows, int cols)
     Mat *mat = (Mat *)malloc(sizeof(Mat));
     mat->rows = rows;
     mat->cols = cols;
+    mat->op_code = OP_SUCCESS;
     mat->data = (float *)malloc(rows * cols * sizeof(float));
     for (int i = 0; i < rows; i++)
     {
@@ -69,6 +70,21 @@ Mat *mat_copy(Mat *m)
     return copy;
 }
 
+Mat *mat_copy_buffer(Mat *m, Mat *buffer)
+{
+    if (m->rows != buffer->rows || m->cols != buffer->cols) {
+        buffer->op_code = OP_INCORRECT_DIM;
+        return buffer;
+    }
+    
+    for (int i = 0; i < m->rows; i++) {
+        for (int j = 0; j < m->cols; j++) {
+            MAT_IDX(buffer, i, j) = MAT_IDX(m, i, j);
+        }
+    }
+    return buffer;
+}
+
 Mat* mat_submatrix(Mat* m1, int num_rows, int num_cols, int start_row, int start_col) {
     assert(start_row >= 0 && start_col >= 0);
     assert(start_row + num_rows <= m1->rows && start_col + num_cols <= m1->cols);
@@ -85,8 +101,16 @@ Mat* mat_submatrix(Mat* m1, int num_rows, int num_cols, int start_row, int start
 }
 
 Mat* mat_submatrix_buffer(Mat* m1, int start_row, int start_col, Mat* buffer) {
-    assert(start_row >= 0 && start_col >= 0);
-    assert(start_row + buffer->rows <= m1->rows && start_col + buffer->cols <= m1->cols);
+    // assert(start_row >= 0 && start_col >= 0);
+    // assert(start_row + buffer->rows <= m1->rows && start_col + buffer->cols <= m1->cols);
+
+    if (!(start_row >= 0 && start_col >= 0)) {
+        buffer->op_code = OP_INCORRECT_DIM;
+        return buffer;
+    } else if (!(start_row + buffer->rows <= m1->rows && start_col + buffer->cols <= m1->cols)) {
+        buffer->op_code = OP_INCORRECT_DIM;
+        return buffer;
+    }
 
     for (int i = 0; i < buffer->rows; i++) {
         for (int j = 0; j < buffer->cols; j++) {
@@ -117,9 +141,20 @@ Mat* mat_concatenate(Mat* m1, Mat* m2, int axis) {
 }
 
 Mat* mat_concatenate_buffer(Mat* m1, Mat* m2, int axis, Mat* buffer) {
-    assert(axis == 0 || axis == 1);
-    assert(axis == 0 ? m1->cols == m2->cols : m1->rows == m2->rows);
-    assert(buffer->rows == m1->rows + (axis == 0 ? m2->rows : 0) && buffer->cols == m1->cols + (axis == 1 ? m2->cols : 0));
+    // assert(axis == 0 || axis == 1);
+    // assert(axis == 0 ? m1->cols == m2->cols : m1->rows == m2->rows);
+    // assert(buffer->rows == m1->rows + (axis == 0 ? m2->rows : 0) && buffer->cols == m1->cols + (axis == 1 ? m2->cols : 0));
+
+    if (!(axis == 0 || axis == 1)) {
+        buffer->op_code = OP_INVALID_INPUT;
+        return buffer;
+    } else if (!(axis == 0 ? m1->cols == m2->cols : m1->rows == m2->rows)) {
+        buffer->op_code = OP_INCORRECT_DIM;
+        return buffer;
+    } else if (!(buffer->rows == m1->rows + (axis == 0 ? m2->rows : 0) && buffer->cols == m1->cols + (axis == 1 ? m2->cols : 0))) {
+        buffer->op_code = OP_INCORRECT_DIM;
+        return buffer;
+    }
 
     for (int i = 0; i < m1->rows; i++) {
         for (int j = 0; j < m1->cols; j++) {
@@ -133,6 +168,44 @@ Mat* mat_concatenate_buffer(Mat* m1, Mat* m2, int axis, Mat* buffer) {
     }
 
     return buffer;
+}
+
+void set_diag(Mat *m, Vec *v) {
+    if (v->rows < m->rows) {
+        m->op_code = OP_INCORRECT_DIM;
+        return;
+    }
+
+    set_zero_mat(m);
+
+    for (int i = 0; i < min(m->cols, m->rows); i++) {
+        MAT_IDX(m, i, i) = VEC_IDX(v, i);
+    }
+}
+
+// WARNING: Assumes len(v) >= min(dim(m))
+void set_diag_array(Mat *m, float *v) {
+    set_zero_mat(m);
+
+    for (int i = 0; i < min(m->cols, m->rows); i++) {
+        MAT_IDX(m, i, i) = v[i];
+    }
+}
+
+void set_diag_const(Mat *m, float value) {
+    set_zero_mat(m);
+
+    for (int i = 0; i < min(m->cols, m->rows); i++) {
+        MAT_IDX(m, i, i) = value;
+    }
+}
+
+void set_zero_mat(Mat *m) {
+    for (int i = 0; i < m->rows; i++) {
+        for (int j = 0; j < m->cols; j++) {
+            MAT_IDX(m, i, j) = 0;
+        }
+    }
 }
 
 /*
@@ -234,9 +307,17 @@ Mat *mat_mult(Mat *m1, Mat *m2)
 
 Mat *mat_mult_buffer(Mat *m1, Mat *m2, Mat *product)
 {
-    assert(m1->cols == m2->rows &&
-           product->rows == m1->rows &&
-           product->cols == m2->cols);
+    // assert(m1->cols == m2->rows &&
+    //        product->rows == m1->rows &&
+    //        product->cols == m2->cols);
+
+    if (!(m1->cols == m2->rows &&
+        product->rows == m1->rows &&
+        product->cols == m2->cols)) {
+            product->op_code = OP_INCORRECT_DIM;
+            return product;
+    }
+
     for (int i = 0; i < m1->rows; i++)
     {
         for (int j = 0; j < m2->cols; j++)
@@ -269,7 +350,14 @@ Mat *mat_scalar_mult(Mat *m, float scalar)
 
 Mat *mat_scalar_mult_buffer(Mat *m, float scalar, Mat *product)
 {
-    assert(product->rows == m->rows && product->cols == m->cols);
+    // assert(product->rows == m->rows && product->cols == m->cols);
+
+    if (!(product->rows == m->rows && product->cols == m->cols)) {
+        product->op_code = OP_INCORRECT_DIM;
+        return product;
+    }
+
+
     for (int i = 0; i < m->rows; i++)
     {
         for (int j = 0; j < m->cols; j++)
@@ -299,7 +387,14 @@ Mat *mat_add(Mat *m1, Mat *m2)
 
 Mat *mat_add_buffer(Mat *m1, Mat *m2, Mat *sum)
 {
-    assert(m1->rows == m2->rows && m1->cols == m2->cols && sum->rows == m1->rows && sum->cols == m1->cols);
+    // assert(m1->rows == m2->rows && m1->cols == m2->cols && sum->rows == m1->rows && sum->cols == m1->cols);
+    
+    if (!(m1->rows == m2->rows && m1->cols == m2->cols && sum->rows == m1->rows && sum->cols == m1->cols)) {
+        sum->op_code = OP_INCORRECT_DIM;
+        return sum;
+    }
+
+    
     for (int i = 0; i < m1->rows; i++)
     {
         for (int j = 0; j < m1->cols; j++)
@@ -313,6 +408,7 @@ Mat *mat_add_buffer(Mat *m1, Mat *m2, Mat *sum)
 Mat *mat_sub(Mat *m1, Mat *m2)
 {
     assert(m1->rows == m2->rows && m1->cols == m2->cols);
+
     Mat *diff = new_mat(m1->rows, m1->cols);
     diff->rows = m1->rows;
     diff->cols = m1->cols;
@@ -328,7 +424,13 @@ Mat *mat_sub(Mat *m1, Mat *m2)
 
 Mat *mat_sub_buffer(Mat *m1, Mat *m2, Mat *diff)
 {
-    assert(m1->rows == m2->rows && m1->cols == m2->cols && diff->rows == m1->rows && diff->cols == m1->cols);
+    // assert(m1->rows == m2->rows && m1->cols == m2->cols && diff->rows == m1->rows && diff->cols == m1->cols);
+    
+    if (!(m1->rows == m2->rows && m1->cols == m2->cols && diff->rows == m1->rows && diff->cols == m1->cols)) {
+        diff->op_code = OP_INCORRECT_DIM;
+        return diff;
+    }
+
     for (int i = 0; i < m1->rows; i++)
     {
         for (int j = 0; j < m1->cols; j++)
@@ -360,7 +462,13 @@ Mat *mat_transpose(Mat *m)
 
 Mat *mat_transpose_buffer(Mat *m, Mat *buffer)
 {
-    assert(m->rows == buffer->cols && m->cols == buffer->rows);
+    // assert(m->rows == buffer->cols && m->cols == buffer->rows);
+
+    if (!(m->rows == buffer->cols && m->cols == buffer->rows)) {
+        buffer->op_code = OP_INCORRECT_DIM;
+        return buffer;
+    }
+
     for (int i = 0; i < m->rows; i++)
     {
         for (int j = 0; j < m->cols; j++)
@@ -373,7 +481,8 @@ Mat *mat_transpose_buffer(Mat *m, Mat *buffer)
 
 /**
  * Transpose the matrix in place.
- * NOTE: THIS FUNCTION ONLY WORKS FOR SQUARE MATRICES.
+ * NOTE: THIS FUNCTION ONLY WORKS FOR SQUARE MATRICES. IT COULD WORK ON NON SQUARE BUT I 
+ * HAVEN'T GOTTEN TO IT YET
  *
  * @param m The matrix to transpose (will be overwritten).
  *
@@ -381,7 +490,13 @@ Mat *mat_transpose_buffer(Mat *m, Mat *buffer)
  */
 Mat *mat_transpose_overwrite(Mat *m)
 {
+    if (!(m->rows == m->cols)) {
+        m->op_code = OP_INCORRECT_DIM;
+        return m;
+    }
+    
     float temp;
+    // TODO: make work for non square by changing row and col and swapping as appropriate
     for (int i = 0; i < m->rows; i++)
     {
         for (int j = i + 1; j < m->cols; j++)
@@ -408,12 +523,20 @@ Mat *mat_transpose_overwrite(Mat *m)
  *        |7 8 9|
  *
  * You would call: mat_determinant(m)
+ * 
+ * For embedded contexts, don't want assert so returns opcode and FLOAT max value on error
  */
 float mat_determinant(Mat *m)
 {
-    assert(m->rows == m->cols);
+    // assert(m->rows == m->cols);
+
+    if (!(m->rows == m->cols)) {
+        m->op_code = OP_INCORRECT_DIM;
+        return FLT_MAX;
+    }
+
     float det = 0.0f;
-    Mat *temp = NULL;
+    // Mat *temp = NULL;
     switch (m->rows)
     {
     case 1:
@@ -428,8 +551,11 @@ float mat_determinant(Mat *m)
         }
         return det;
     default:
+        // TODO: FIND A WAY TO NOT USE MALLOC
         // submatrix for cofactor
-        temp = new_mat(m->rows - 1, m->cols - 1);
+        // temp = new_mat(m->rows - 1, m->cols - 1);
+        Mat temp = {.rows=m->rows-1, .cols=m->rows-1};
+
         for (int j = 0; j < m->cols; j++)
         {
             float sign = (j % 2 == 0) ? 1.0f : -1.0f;
@@ -442,21 +568,26 @@ float mat_determinant(Mat *m)
                 {
                     if (k == j)
                         continue;
-                    MAT_IDX(temp, subi, subj) = MAT_IDX(m, i, k);
+                    MAT_IDX(&temp, subi, subj) = MAT_IDX(m, i, k);
                     subj++;
                 }
                 subi++;
             }
-            det += sign * MAT_IDX(m, 0, j) * mat_determinant(temp);
+            det += sign * MAT_IDX(m, 0, j) * mat_determinant(&temp);
         }
-        free_mat(temp);
+        // free_mat(temp);
         return det;
     }
 }
 
 float mat_cofactor(Mat *m, int i, int j)
 {
-    assert(m->rows == m->cols);
+    // assert(m->rows == m->cols);
+
+    if (!(m->rows == m->cols)) {
+        m->op_code = OP_INCORRECT_DIM;
+        return FLT_MAX;
+    }
 
     Mat *submat = new_mat(m->rows - 1, m->cols - 1);
     int sub_i = 0, sub_j = 0;
@@ -496,7 +627,13 @@ Mat *mat_cofactor_matrix(Mat *m)
 
 Mat *mat_cofactor_matrix_buffer(Mat *m, Mat *buffer)
 {
-    assert(m->rows == buffer->rows && m->cols == buffer->cols);
+    // assert(m->rows == buffer->rows && m->cols == buffer->cols);
+
+    if(!(m->rows == buffer->rows && m->cols == buffer->cols)) {
+        buffer->op_code = OP_INCORRECT_DIM;
+        return buffer;
+    }
+
     for (int i = 0; i < m->rows; i++)
     {
         for (int j = 0; j < m->cols; j++)
@@ -546,8 +683,17 @@ Mat *mat_inverse(Mat *m)
 
 Mat *mat_inverse_buffer(Mat *m, Mat *buffer)
 {
-    assert(m->rows == m->cols);
-    assert(buffer->rows == m->rows && buffer->cols == m->cols);
+//     assert(m->rows == m->cols);
+//     assert(buffer->rows == m->rows && buffer->cols == m->cols);
+
+
+    if (!(m->rows == m->cols)) {
+        buffer->op_code = OP_INCORRECT_DIM;
+        return buffer;
+    } else if (!(buffer->rows == m->rows && buffer->cols == m->cols)) {
+        buffer->op_code = OP_INCORRECT_DIM;
+        return buffer;
+    }
 
     mat_cofactor_matrix_buffer(m, buffer);
 
@@ -557,13 +703,19 @@ Mat *mat_inverse_buffer(Mat *m, Mat *buffer)
         det += MAT_IDX(m, 0, j) * MAT_IDX(buffer, 0, j);
     }
 
-    assert(det != 0); // make sure matrix is invertible
+    // assert(det != 0); // make sure matrix is invertible
+
+    if (det == 0) {
+        buffer->op_code = OP_NONIVERTIBLE;
+        return buffer;
+    } // make sure matrix is invertible
 
     mat_transpose_overwrite(buffer);
     mat_scalar_mult_buffer(buffer, 1.0f / det, buffer);
     return buffer;
 }
 
+//TODO: make buffered versions of these:
 Mat *mat_pseudo_inverse(Mat *m)
 {
     Mat *m_t = mat_transpose(m);

@@ -27,14 +27,23 @@ add_executable(robot_arm_modeling
     unit_tests.c
 )
 
+add_executable(kalman_filter_test
+    user_math.c
+    kf.c
+    testkf.c
+)
+
 # Include header files
 target_include_directories(robot_arm_modeling PRIVATE ${CMAKE_SOURCE_DIR})
+target_include_directories(kalman_filter_test PRIVATE ${CMAKE_SOURCE_DIR})
 
 # Include math library on linux
 if (UNIX) 
     target_link_libraries(robot_arm_modeling m)
+    target_link_libraries(kalman_filter_test m)
 endif (UNIX)
 
 # Enable testing support
 enable_testing()
 add_test(NAME unit_tests COMMAND robot_arm_modeling)
+

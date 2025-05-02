@@ -15,6 +15,16 @@
 #define MAT_IDX(m, i, j) ((m)->data[(i) * (m)->cols + (j)])
 #define VEC_IDX(m, i) ((m)->data[(i)])
 
+// Error Handling Enum
+typedef enum Linalg_Op_Code_e {
+    OP_SUCCESS,
+    OP_FAILURE,
+    OP_NONIVERTIBLE,
+    OP_INCORRECT_DIM,
+    OP_INVALID_INPUT
+} Linalg_Op_Code_e;
+
+
 /*
 -------------------------------------------------------------
 SECTION:	MATRICES
@@ -26,6 +36,7 @@ typedef struct Mat {
     int rows;
     int cols;
     float* data;
+    Linalg_Op_Code_e op_code;
 } Mat;
 
 // matrix creation functions
@@ -34,10 +45,15 @@ Mat* new_eye(int size);
 Mat* new_mat_buffer(int rows, int cols, float* buffer);
 void free_mat(Mat* m);
 Mat* mat_copy(Mat* m);
+Mat *mat_copy_buffer(Mat *m, Mat *buffer);
 Mat* mat_submatrix(Mat* m1, int num_rows, int num_cols, int start_row, int start_col);
 Mat* mat_submatrix_buffer(Mat* m1, int start_row, int start_col, Mat* buffer);
 Mat* mat_concatenate(Mat* m1, Mat* m2, int axis);
 Mat* mat_concatenate_buffer(Mat* m1, Mat* m2, int axis, Mat* buffer);
+void set_diag(Mat *m, Mat *v); // note Mat v is really a vector, I just don't want to move the macro
+void set_diag_array(Mat *m, float *v);
+void set_diag_const(Mat *m, float value);
+void set_zero_mat(Mat *m);
 
 // matrix helpers
 char* mat_to_string(Mat* m);
