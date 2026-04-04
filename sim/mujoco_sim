@@ -1,0 +1,43 @@
+import mujoco
+from mujoco import viewer
+from mujoco import MjModel, MjData
+import numpy as np
+
+model = mujoco.MjModel.from_xml_path("arm/urdf/arm.xml")
+data = mujoco.MjData(model)
+
+base_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, 'base_link')
+model.opt.gravity = (0, 0, 0)
+
+
+
+mujoco.mj_resetData(model, data)
+data.qvel[:] =0
+mujoco.mj_forward(model, data)
+mujoco.mj_step(model, data)
+
+with mujoco.viewer.launch_passive(model, data, key_callback=None) as viewer:
+    # print(data.xfrc_applied)
+    # data.qpos = [1.3e-3, -1.7e-3, 7.05e-6, -2.1e-3, 6e-3]
+    # data.qpos = [0, 0, 0, 0, 0]
+    viewer.cam.lookat[:] = data.xpos[base_id]
+    # viewer.opt.flags[mujoco.mjtVisFlag.mjVIS_JOINT] = True
+    # viewer.cam.distance = 0.5    
+
+    viewer.cam.distance = 3.0
+    viewer.cam.azimuth = 0
+    viewer.cam.elevation = -5
+    print(data.qpos)
+    data.qpos = 0
+    print(data.qpos)
+    # mujoco.mj_step(model, data)
+
+
+
+    while viewer.is_running():
+
+        # print(data.xfrc_applied)
+        mujoco.mj_step(model, data)
+        viewer.sync()
+
+viewer.close()
