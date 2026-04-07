@@ -5,3 +5,9 @@ FORWARD_AND_INVERSEKINEMATICS_SOLUTION_OF_6-DOF_ROBOTS_THOSE_HAVE_OFFSET_AND_SPH
 temp.*
 
 arg_parser.*
+robot.xml
+
+__pycache__/
+
+rotate_axis.py
+test_input.py

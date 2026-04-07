@@ -1,0 +1,7 @@
+numpy
+matplotlib
+scipy
+mujoco
+pygame
+PySDL2
+PyQt5
