@@ -72,14 +72,16 @@ def forward_kinematics(dh_params):
     return transforms
 
 def compute_orientation_error(R_current, R_target):
-    z_current = R_current[:, 2]
-    z_target = R_target[:, 2]
+    # z_current = R_current[:, 2]
+    # z_target = R_target[:, 2]
 
-    # R_err = R_target @ R_current.T
-    # r = R.from_matrix(R_err)
-    return np.cross(z_current, z_target)
+    R_err = R_target @ R_current.T
+    r = R.from_matrix(R_err)
+    # return np.cross(z_current, z_target)
 
-def calculate_5d_jacobian_numerical(theta, target_pos, target_rot, damping = 0.01):
+    return r.as_rotvec()
+
+def calculate_5d_jacobian_numerical(theta, target_pos, target_rot, damping = 0.001):
     # 5x6 jacobian (omitting end-effector yaw)
     J = np.zeros((5, 6))
 
@@ -87,18 +89,18 @@ def calculate_5d_jacobian_numerical(theta, target_pos, target_rot, damping = 0.0
     current_pos = transforms[-1][:3, 3]
     current_rot = transforms[-1][:3, :3]
 
-    x_c = current_rot[:, 0]
     y_c = current_rot[:, 1]
+    z_c = current_rot[:, 2]
 
     weight_pos = 1.0
-    weight_ori = 0.3
+    weight_ori = 0.5
 
     gamma = 1e-6
     epsilon = 1e-9
     lambda_val = damping
     for i in range(6):
-        d_i = min(abs(theta[i] - theta_lims[i][0]), abs(theta[i] - theta_lims[i][1]))
-        lambda_val += gamma / (d_i**2 + epsilon)
+       d_i = min(abs(theta[i] - theta_lims[i][0]), abs(theta[i] - theta_lims[i][1]))
+       lambda_val += gamma / (d_i**2 + epsilon)
 
     # numerical Jacobian
     epsilon = 1e-6
@@ -114,8 +116,8 @@ def calculate_5d_jacobian_numerical(theta, target_pos, target_rot, damping = 0.0
         R_err = perturbed_rot @ current_rot.T
         omega = R.from_matrix(R_err).as_rotvec() / epsilon
 
-        J[3, i] = np.dot(x_c, omega) * weight_ori
-        J[4, i] = np.dot(y_c, omega) * weight_ori
+        J[3, i] = np.dot(y_c, omega) * weight_ori
+        J[4, i] = np.dot(z_c, omega) * weight_ori
 
     # damped pseudoinverse
     J_pinv = np.linalg.inv(J.T @ J + lambda_val * np.eye(6)) @ J.T
@@ -125,7 +127,7 @@ def calculate_5d_jacobian_numerical(theta, target_pos, target_rot, damping = 0.0
 
     return J_pinv, N, transforms
 
-def decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, max_iters=25, tol=1e-3, damping=0.01, run_to_completion=True, show_intermediate=True):
+def decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, max_iters=25, tol=1e-3, damping=0.001, run_to_completion=True, show_intermediate=True):
     error_list = []
     error_sum = 0.0
 
@@ -140,23 +142,33 @@ def decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, max_iters=25
         current_wc = transforms_current[4][:3, 3]
 
         weight_pos = 1.0
-        weight_ori = 0.3
+        weight_ori = 0.5
 
         pos_error = target_pos - current_pos
 
+        max_pos_step = 0.05
+        pos_norm = np.linalg.norm(pos_error)
+        if pos_norm > max_pos_step:
+            pos_error = pos_error * (max_pos_step / pos_norm)
+
         rot_error_vec = compute_orientation_error(current_rot, target_rot)
 
+        max_rot_step = 0.05
+        rot_norm = np.linalg.norm(rot_error_vec)
+        if rot_norm > max_rot_step:
+            rot_error_vec = rot_error_vec * (max_rot_step / rot_norm)
+
         # projecting rot error onto local X and Y
-        x_c = current_rot[:, 0]
         y_c = current_rot[:, 1]
-        rot_error = np.array([np.dot(x_c, rot_error_vec), np.dot(y_c, rot_error_vec)])
+        z_c = current_rot[:, 2]
+        rot_error = np.array([np.dot(y_c, rot_error_vec), np.dot(z_c, rot_error_vec)])
         
         error_5d = np.concatenate([pos_error * weight_pos, rot_error * weight_ori])
 
         # joint limit avoidance
 
         q_null = np.zeros(6)
-        k_null = 1.5 # gain for limit avoidance
+        k_null = 0.05 # gain for limit avoidance
 
         for i in range(6):
             min_lim, max_lim = theta_lims[i]
@@ -171,9 +183,10 @@ def decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, max_iters=25
         delta_theta_null = N @ q_null
 
         delta_theta = delta_theta_primary + delta_theta_null
-        delta_theta = np.clip(delta_theta, -0.2, 0.2)
+        delta_theta = np.clip(delta_theta, -0.1, 0.1)
 
         theta += delta_theta
+        # theta = clamp_theta(theta)
 
         transforms = forward_kinematics(dh_params(theta))
     
@@ -183,10 +196,14 @@ def decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, max_iters=25
         # errors
 
         pos_error = target_pos - current_pos
-        ori_error = compute_orientation_error(current_rot, target_rot)
+        ori_error_raw = compute_orientation_error(current_rot, target_rot)
 
-        total_error = np.concatenate((pos_error, ori_error))
-        error_norm = np.linalg.norm(total_error)
+        y_c = current_rot[:, 1]
+        z_c = current_rot[:, 2]
+        ori_error_5d = np.array([np.dot(y_c, ori_error_raw), np.dot(z_c, ori_error_raw)])
+
+        total_error_5d = np.concatenate((pos_error, ori_error_5d))
+        error_norm = np.linalg.norm(total_error_5d)
 
         error_sum += error_norm
         error_list.append(error_norm)
@@ -291,8 +308,7 @@ while running:
     theta = decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, run_to_completion=(use_random_targets), show_intermediate=(use_random_targets))
     
     # random target
-    if use_random_targets and (time.time() - start > 2):
-        print("haha")
+    if use_random_targets and (time.time() - start > 3):
         target_pos = np.random.uniform([-0.3, -0.3, 0.3], [0.3, 0.3, 0.5])
         target_rot = R.from_euler('xyz', np.random.uniform([-30, -30, -30], [30, 30, 30]), degrees=True).as_matrix()
         start = time.time()
@@ -300,7 +316,8 @@ while running:
         # state = client_thread.get_state()
         # target_pos = np.array([state['x'], state['y'], state['z']])
         # target_rot = R.from_euler('xyz', [state['roll'], state['pitch'], state['yaw']], degrees=True).as_matrix()
-        start = time.time()
+        # start = time.time()
+        pass
     
     arm_state = {
         'theta': theta.tolist(),
