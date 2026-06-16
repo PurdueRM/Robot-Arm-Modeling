@@ -127,7 +127,7 @@ def calculate_5d_jacobian_numerical(theta, target_pos, target_rot, damping = 0.0
 
     return J_pinv, N, transforms
 
-def decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, max_iters=25, tol=1e-3, damping=0.001, run_to_completion=True, show_intermediate=True):
+def decoupled_inverse_kinematics(theta, target_pos, target_rot, ax=None, max_iters=25, tol=1e-3, damping=0.001, run_to_completion=True, show_intermediate=True):
     error_list = []
     error_sum = 0.0
 
@@ -215,7 +215,7 @@ def decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, max_iters=25
             if improvement < 1e-5:
                 convergence_met = True        
 
-        if show_intermediate or convergence_met:
+        if (show_intermediate or convergence_met) and ax is not None:
             ax.clear()
             ax.set_xlim(-0.8, 0.8)
             ax.set_ylim(-0.8, 0.8)
