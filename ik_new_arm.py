@@ -223,6 +223,8 @@ def decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, max_iters=25
     error_list = []
     error_sum = 0.0
 
+    curr_theta = np.copy(theta)
+
     for iter_count in range(max_iters):
         if not running:
             break
@@ -270,9 +272,13 @@ def decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, max_iters=25
 
         # clip theta to limits
         # theta = clamp_theta(theta)
+
+        # debug test
+        # theta = np.array([0.0,0.0,0.0,0.0,0.0,0.0]) # test line for debug
+        # joint_to_test = 5
+        # theta[joint_to_test] = curr_theta[joint_to_test] + 0.01
         
         # full forward kinematics to check error
-        # theta = np.array([0.0,0.0,0.0,0.0,0.0,0.0]) # test line for debug
         transforms = forward_kinematics(dh_params(theta))
         current_pos = transforms[-1][:3, 3]
         current_rot = transforms[-1][:3, :3]
@@ -306,11 +312,11 @@ def decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, max_iters=25
             positions = np.array([T[:3, 3] for T in transforms])
             ax.plot(positions[:, 0], positions[:, 1], positions[:, 2], 'ro-', linewidth=3)
             ax.scatter(positions[-1, 0], positions[-1, 1], positions[-1, 2], c='blue', marker='o', s=100, label='End Effector')
-            ax.scatter(target_pos[0], target_pos[1], target_pos[2], c='green', marker='x', s=100, label='Target')
+            ax.scatter(target_pos[0], target_pos[1], target_pos[2], c='green', marker='o', s=100, label='Target') # could use marker x
             
             # wrist center (target and current)
-            ax.scatter(wrist_center[0], wrist_center[1], wrist_center[2], c='purple', marker='o', s=80, label='Wrist Center')
-            ax.scatter(current_wc[0], current_wc[1], current_wc[2], c='orange', marker='o', s=60, label='Current Wrist Center')
+            # ax.scatter(wrist_center[0], wrist_center[1], wrist_center[2], c='purple', marker='o', s=80, label='Wrist Center')
+            # ax.scatter(current_wc[0], current_wc[1], current_wc[2], c='orange', marker='o', s=60, label='Current Wrist Center')
             
             # end-effector orientation
             scale = 0.1
@@ -457,9 +463,11 @@ client_thread.start()
 server = UDP_Server(host='127.0.0.1',port=BROADCAST_PORT, broadcast_enabled=True)
 server.start()
 
+show_intermediate = True
+run_to_completion = False
 
 while running:
-    theta = decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, run_to_completion=(use_random_targets), show_intermediate=(use_random_targets))
+    theta = decoupled_inverse_kinematics(theta, target_pos, target_rot, ax, run_to_completion=run_to_completion, show_intermediate=show_intermediate)
     
     # random target
     if use_random_targets and (time.time() - start > 2):

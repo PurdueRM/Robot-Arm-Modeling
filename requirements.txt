@@ -5,3 +5,5 @@ mujoco
 pygame
 PySDL2
 PyQt5
+pyserial
+bleak

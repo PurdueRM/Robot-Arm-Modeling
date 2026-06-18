@@ -1,0 +1,50 @@
+<mujoco model="arm2.SLDASM">
+  <compiler angle="radian"/>
+
+  <asset>
+    <mesh name="base_link" content_type="model/stl" file="base_link.stl"/>
+    <mesh name="arm_link1" content_type="model/stl" file="arm_link1.stl"/>
+    <mesh name="arm_link2" content_type="model/stl" file="arm_link2.stl"/>
+    <mesh name="wrist1" content_type="model/stl" file="wrist1.stl"/>
+    <mesh name="hand_link" content_type="model/stl" file="hand_link.stl"/>
+    <mesh name="finger_link" content_type="model/stl" file="finger_link.stl"/>
+  </asset>
+
+  <worldbody>
+    <body name="base_link">
+      <inertial pos="2.139e-05 0.0017648 0.02168" quat="0.482209 0.518141 -0.516972 0.481398" mass="0.53613" diaginertia="0.00172612 0.0015219 0.00135018"/>
+      <joint name="joint5" pos="0 0 0" axis="0 0 1" range="-4.26 4.26"/>
+      <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="base_link"/>
+      <body name="arm_link1" pos="0 -0.0475 0.05" quat="0.641207 -0.641209 -0.298081 -0.298082">
+        <inertial pos="0.1773 -0.00039417 0.048666" quat="-0.000275695 0.702082 -0.00261087 0.712092" mass="0.5946" diaginertia="0.01091 0.0107261 0.000688112"/>
+        <joint name="joint0" pos="0 0 0" axis="0 0 1" range="-4.26 4.26"/>
+        <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="arm_link1"/>
+        <body name="arm_link2" pos="0.37 0 0.075" quat="0.811752 0 0 0.584002">
+          <inertial pos="0.093606 -0.00013859 -0.0074875" quat="0.0123143 0.769904 0.0124989 0.637918" mass="0.34589" diaginertia="0.00176958 0.00172556 0.000332425"/>
+          <joint name="joint1" pos="0 0 0" axis="0 0 1" range="-2.36 2.36"/>
+          <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="arm_link2"/>
+          <body name="wrist1" pos="0.185 0 -0.035" quat="0.707105 0 0.707108 0">
+            <inertial pos="0 -0.00038502 0.043333" quat="0.707099 0.00324196 -0.00324196 0.707099" mass="0.25858" diaginertia="0.00109797 0.0010491 0.000316674"/>
+            <joint name="joint2" pos="0 0 0" axis="0 0 1" range="-3.14 3.14"/>
+            <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="wrist1"/>
+            <body name="hand_link" pos="-0.0255 0 0.125" quat="0.701523 0.0886832 -0.701524 -0.0886832">
+              <inertial pos="0.047132 0 -0.024979" quat="0.499829 0.500171 0.500171 0.499829" mass="0.34435" diaginertia="0.00063583 0.00062808 0.00013834"/>
+              <joint name="joint3" pos="0 0 0" axis="0 0 1" range="-2.36 2.36"/>
+              <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="hand_link"/>
+              <body name="finger_link" pos="0.1068 0 -0.047" quat="-3.67321e-06 1 0 0">
+                <inertial pos="0.077446 0.00022018 -0.023819" quat="0.48197 0.518848 0.517181 0.480651" mass="0.17519" diaginertia="5.89662e-05 4.87735e-05 3.49233e-05"/>
+                <joint name="joint4" pos="0 0 0" axis="0 0 1" range="-2.36 2.36"/>
+                <geom type="mesh" rgba="0.79216 0.81961 0.93333 1" mesh="finger_link"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="target">
+      <inertial pos="2.139e-05 0.0017648 0.02168" mass="1" diaginertia="1 1 1"/>
+      <joint name="target_joint" type="free"/>
+      <geom size="0.02" rgba="1 0 0 1"/>
+    </body>
+  </worldbody>
+</mujoco>
