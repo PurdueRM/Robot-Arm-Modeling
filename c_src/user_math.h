@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <string.h>
 #include <float.h>
+#include <stdarg.h>
+#include <ctype.h>
 
 // DEFINE CONSTANTS
 #define PI 3.14159265358979323846
@@ -15,6 +17,8 @@
 #define MAT_IDX(m, i, j) ((m)->data[(i) * (m)->cols + (j)])
 #define VEC_IDX(m, i) ((m)->data[(i)])
 
+<<<<<<< HEAD:user_math.h
+=======
 // Error Handling Enum
 typedef enum Linalg_Op_Code_e {
     OP_SUCCESS,
@@ -24,6 +28,7 @@ typedef enum Linalg_Op_Code_e {
     OP_INVALID_INPUT
 } Linalg_Op_Code_e;
 
+>>>>>>> main:c_src/user_math.h
 
 /*
 -------------------------------------------------------------
@@ -45,6 +50,10 @@ Mat* new_eye(int size);
 Mat* new_mat_buffer(int rows, int cols, float* buffer);
 void free_mat(Mat* m);
 Mat* mat_copy(Mat* m);
+<<<<<<< HEAD:user_math.h
+Mat* create_temp_mat(Mat* m);
+Mat* mat_execute_and_free(Mat* (*func)(void *, ...), ...);
+=======
 Mat *mat_copy_buffer(Mat *m, Mat *buffer);
 Mat* mat_submatrix(Mat* m1, int num_rows, int num_cols, int start_row, int start_col);
 Mat* mat_submatrix_buffer(Mat* m1, int start_row, int start_col, Mat* buffer);
@@ -54,6 +63,7 @@ void set_diag(Mat *m, Mat *v); // note Mat v is really a vector, I just don't wa
 void set_diag_array(Mat *m, float *v);
 void set_diag_const(Mat *m, float value);
 void set_zero_mat(Mat *m);
+>>>>>>> main:c_src/user_math.h
 
 // matrix helpers
 char* mat_to_string(Mat* m);
@@ -84,9 +94,12 @@ Mat* mat_transpose_buffer(Mat *m, Mat* buffer);
 Mat* mat_transpose_overwrite(Mat *m);
 Mat* mat_pseudo_inverse(Mat *m);
 Mat* mat_damped_pseudo_inverse(Mat* m, float rho);
+<<<<<<< HEAD:user_math.h
+=======
 float mat_trace(Mat *m);
 Mat* mat_clamp(Mat* val, float min, float max);
 Mat* mat_clamp_buffer(Mat* val, float min, float max, Mat* buffer);
+>>>>>>> main:c_src/user_math.h
 
 // TODO: ADD PSEUDO INVERSE
 

@@ -2,6 +2,10 @@ build/
 
 FORWARD_AND_INVERSEKINEMATICS_SOLUTION_OF_6-DOF_ROBOTS_THOSE_HAVE_OFFSET_AND_SPHERICAL_WRISTS.pdf
 
+<<<<<<< HEAD
+arg_parser.*
+temp.*
+=======
 temp.*
 
 arg_parser.*
@@ -11,3 +15,4 @@ __pycache__/
 
 rotate_axis.py
 test_input.py
+>>>>>>> main
