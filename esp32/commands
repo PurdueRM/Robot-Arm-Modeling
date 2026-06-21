@@ -1,0 +1,28 @@
+❯ cat ~/.arduino15/arduino-cli.yaml
+board_manager:
+    additional_urls: [https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json]
+
+
+
+arduino-cli board list
+arduino-cli compile --fqbn esp32:esp32:esp32 test_bno08x
+arduino-cli lib install "SparkFun BNO08x Cortex Based IMU"
+arduino-cli upload -p /dev/ttyUSB0 --fqbn esp32:esp32:esp32 test_bno08x.sketch
+arduino-cli lib search BNO08
+arduino-cli lib install --git-url https://github.com/sparkfun/SparkFun_BNO080_Arduino_Library.git
+arduino-cli board details -b esp32:esp32:esp32
+arduino-cli core list
+arduino-cli core install esp32:esp32
+arduino-cli core update-index
+cat ~/.arduino15/arduino-cli.yaml
+arduino-cli config init
+
+arduino-cli monitor -p /dev/ttyUSB0 -c baudrate=115200
+
+bluetoothctl
+scan on
+scan off
+quit
+
+disconnect 30:76:F5:B9:B7:C6
+pair 30:76:F5:B9:B7:C6
