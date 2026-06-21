@@ -83,7 +83,7 @@ def forward_kinematics(dh_params):
 
 def compute_orientation_error_5dof(R_current, R_target):
     z_current = R_current[:, 2]
-    z_target = R_current[:,2]
+    z_target = R_target[:,2]
 
     return np.cross(z_current, z_target)
 
@@ -117,7 +117,7 @@ def teleop_step_transpose(theta, target_pos, target_rot, ax, show_intermediate=T
         
         # set gains (can be tuned)
         Kp_pos = 6 # for reaching (x,y,z)
-        Kp_ori = 2.0 # for pointing suction cup
+        Kp_ori = 3 # for pointing suction cup
 
         error_vec = np.concatenate((pos_error * Kp_pos, ori_error * Kp_ori))
 
@@ -128,7 +128,7 @@ def teleop_step_transpose(theta, target_pos, target_rot, ax, show_intermediate=T
 
         q_repel = np.zeros(6)
         warning_zone = 0.35  # ~20 degrees: spring only turns on if within 20 deg of limit
-        K_repel = 0.01        # strength of repelling spring
+        K_repel = 1        # strength of repelling spring
         for i in range(6):
             min_lim = theta_lims[i][0]
             max_lim = theta_lims[i][1]
@@ -141,10 +141,10 @@ def teleop_step_transpose(theta, target_pos, target_rot, ax, show_intermediate=T
                 q_repel[i] = -K_repel * (theta[i] - (max_lim - warning_zone))
             
         # add tracking velocities + avoidance velocities together
-        # delta_theta += q_repel
+        delta_theta += q_repel
         
         # clips max theta per iter to +-0.1
-        delta_theta = np.clip(delta_theta, -0.2, 0.2) 
+        # delta_theta = np.clip(delta_theta, -0.2, 0.2) 
         theta += delta_theta
 
         # hard clamp

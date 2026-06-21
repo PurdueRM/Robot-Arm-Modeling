@@ -80,6 +80,9 @@ theta_lims = [
     (-2.36, 2.36)   # joint4 (hand -> finger)
 ]
 
+lower_bounds = np.array([lim[0] for lim in theta_lims])
+upper_bounds = np.array([lim[1] for lim in theta_lims])
+
 def create_transform_matrix(xyz, rpy, joint_angle):
     T = np.eye(4)
     T[:3, 3] = xyz
@@ -208,15 +211,18 @@ def decoupled_inverse_kinematics(theta, target_pos, target_rot, model, data, vie
         # joint limit avoidance
 
         q_null = np.zeros(6)
-        k_null = 0.05 # gain for limit avoidance
+        k_null = 0.1 # gain for limit avoidance
 
         for i in range(6):
             min_lim, max_lim = theta_lims[i]
             mid_point = (max_lim + min_lim) / 2.0
             range_lim = (max_lim - min_lim)
-                
+            
+            normalized_dist = (theta[i] - mid_point) / (range_lim / 2.0)
+
+            q_null[i] = -k_null * (normalized_dist ** 3)
             # gradient pushing the joint towards its midpoint, spikes exponentially as it gets closer to the limits.
-            q_null[i] = -k_null * (theta[i] - mid_point) / ((range_lim / 2.0) ** 2)
+            # q_null[i] = -k_null * (theta[i] - mid_point) / ((range_lim / 2.0) ** 2)
 
         # combine
         delta_theta_primary = J_pinv @ error_5d
@@ -226,6 +232,7 @@ def decoupled_inverse_kinematics(theta, target_pos, target_rot, model, data, vie
         delta_theta = np.clip(delta_theta, -0.1, 0.1)
 
         theta += delta_theta
+        # theta = np.clip(theta, lower_bounds, upper_bounds)
         # theta = clamp_theta(theta)
 
         for i, qpos_idx in enumerate(qpos_idcs):
