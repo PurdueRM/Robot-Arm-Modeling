@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -26,12 +27,6 @@
 
 #define JOYSTICK_SW GPIO_NUM_25
 
-static const char *TAG = "IMU";
-static float yaw_offset = 0.0f;
-static IMUData data;
-static uint8_t packet_seq_num = 0;
-uint8_t tx1_buf[39];
-
 typedef struct {
   uint8_t data[9][3];
   uint8_t joystick_x;
@@ -39,9 +34,56 @@ typedef struct {
   uint8_t flags;
 } packed_payload_t;
 
-packed_payload_t payload[30];
+static float yaw_offset = 0.0f;
+static IMUData data;
+
+static uint8_t packet_seq_num = 0;
+uint8_t tx1_buf[39];
+uint8_t payload_arr[30];
+packed_payload_t payload;
+
 joystick_t joystick;
 adc_oneshot_unit_handle_t adc_handle;
+
+uint8_t home_toggle = 0;
+uint8_t teleop_toggle = 0;
+uint8_t ee_trigger = 0;
+uint8_t fine_control_toggle = 0;
+
+void pack_float_to_3bytes(float f, uint8_t *dest) {
+    uint32_t val;
+    memcpy(&val, &f, 4);
+    
+    // keep the 3 msb
+    dest[0] = (val >> 8) & 0xFF;
+    dest[1] = (val >> 16) & 0xFF;
+    dest[2] = (val >> 24) & 0xFF;
+}
+
+uint8_t pack_flags(uint8_t home_toggle, uint8_t teleop_toggle, uint8_t ee_trigger, uint8_t fine_control_toggle) {
+    uint8_t packed = 0;
+    
+    // Use bitwise OR to set bits. 
+    // We mask the input with & 0x01 to ensure a flag only ever uses 1 bit.
+    packed |= (home_toggle & 0x01) << 0; // Flag 1 in bit 0
+    packed |= (teleop_toggle & 0x01) << 1; // Flag 2 in bit 1
+    packed |= (ee_trigger & 0x01) << 2; // Flag 3 in bit 2
+    packed |= (fine_control_toggle & 0x01) << 3; // Flag 4 in bit 3
+    
+    return packed;
+}
+
+void construct_data_from_imu() {
+  pack_float_to_3bytes(data.angle[0], payload.data[0]);
+  pack_float_to_3bytes(data.angle[1], payload.data[1]);
+  pack_float_to_3bytes(data.angle[2], payload.data[2]);
+  pack_float_to_3bytes(data.acc[0],   payload.data[3]);
+  pack_float_to_3bytes(data.acc[1],   payload.data[4]);
+  pack_float_to_3bytes(data.acc[2],   payload.data[5]);
+  pack_float_to_3bytes(data.ang_vel[0], payload.data[6]);
+  pack_float_to_3bytes(data.ang_vel[1], payload.data[7]);
+  pack_float_to_3bytes(data.ang_vel[2], payload.data[8]);
+}
 
 void init_adc() {
   adc_oneshot_unit_init_cfg_t init_config = {
@@ -175,21 +217,35 @@ extern "C" void app_main() {
       }
     }
 
-    read_joystick();
-
-    printf("X=%4d  Y=%4d  SW=%d\n",joystick.x, joystick.y, joystick.sw);
+    // printf("X=%4d  Y=%4d  SW=%d\n",joystick.x, joystick.y, joystick.sw);
 
 
-    // TickType_t currentTicks = xTaskGetTickCount();
-    // if (currentTicks - lastTransmitTicks >= transmitIntervalTicks) {
-    //   lastTransmitTicks = currentTicks;
-    //   data = parser.getData();
+    TickType_t currentTicks = xTaskGetTickCount();
+    if (currentTicks - lastTransmitTicks >= transmitIntervalTicks) {
+      lastTransmitTicks = currentTicks;
+      data = parser.getData();
       
-    //   construct_controller_packet(data, tx1_buf);
+      construct_data_from_imu(); // loads payload.data from data
 
-    //   uart_write_bytes(UART_PORT_NUM_1, (const char*)tx1_buf, 39);
+      read_joystick();
+      payload.joystick_x = joystick.x;
+      payload.joystick_y = joystick.y;
 
-    // }
+      payload.flags = pack_flags(home_toggle, teleop_toggle, ee_trigger, fine_control_toggle);
+
+      memcpy(payload_arr, &payload, 30);
+      
+      construct_controller_packet(payload_arr, tx1_buf);
+
+      
+      uart_write_bytes(UART_PORT_NUM_1, (const char*) tx1_buf, 39);
+
+      // for (size_t i = 0; i < 39; i++) {
+        // %02X prints the value as a 2-digit hex number
+        // printf("%02X ", tx1_buf[i]);
+      // }
+      // printf("\n");
+    }
 
     /*
     TickType_t currentTicks = xTaskGetTickCount();
