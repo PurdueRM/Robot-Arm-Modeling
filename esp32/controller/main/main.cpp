@@ -238,13 +238,13 @@ extern "C" void app_main() {
       construct_controller_packet(payload_arr, tx1_buf);
 
       
-      uart_write_bytes(UART_PORT_NUM_1, (const char*) tx1_buf, 39);
+      // uart_write_bytes(UART_PORT_NUM_1, (const char*) tx1_buf, 39);
 
-      // for (size_t i = 0; i < 39; i++) {
+      for (size_t i = 0; i < 39; i++) {
         // %02X prints the value as a 2-digit hex number
-        // printf("%02X ", tx1_buf[i]);
-      // }
-      // printf("\n");
+        printf("%02X ", tx1_buf[i]);
+      }
+      printf("\n");
     }
 
     /*
