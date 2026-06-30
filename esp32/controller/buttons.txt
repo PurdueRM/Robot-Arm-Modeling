@@ -4,4 +4,19 @@ reset heading
 turn power on/off switch
 ee on/off
 
+pinout:
+
+rx2: imu tx
+tx2: imu rx
+
+gpio32: joystick x (adc)
+
+
+gpio18: rs232 tx
+gpio19: rs232 rx
+
+gpio25: red button (internal pullup)
+gpio26: blue button (internal pullup)
+gpio27: green button (internal pullup)
+
 
